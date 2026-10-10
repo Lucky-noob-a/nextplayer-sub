@@ -42,6 +42,7 @@ import dev.anilbeesetti.nextplayer.feature.player.service.stopPlayerSession
 import dev.anilbeesetti.nextplayer.feature.player.service.tryDecoderFallback
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberMediaController
 import dev.anilbeesetti.nextplayer.feature.player.utils.PlayerApi
+import dev.anilbeesetti.nextplayer.feature.player.utils.SubdlSubtitleDownloader
 import dev.anilbeesetti.nextplayer.feature.player.utils.PlaylistPlaybackContract
 import dev.anilbeesetti.nextplayer.feature.player.utils.toMediaQueue
 import java.util.concurrent.CopyOnWriteArrayList
@@ -81,10 +82,28 @@ class PlayerActivity : ComponentActivity() {
     private var mediaController by mutableStateOf<MediaController?>(null)
     private lateinit var playerApi: PlayerApi
     private var playbackRequestJob: Job? = null
+    private val automaticSubtitleAttempts = mutableSetOf<String>()
 
     private val playbackStateListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             intent.data = mediaItem?.localConfiguration?.uri
+            val item = mediaItem ?: return
+            val videoUri = item.localConfiguration?.uri ?: return
+            if (item.localConfiguration?.subtitleConfigurations?.isNotEmpty() == true) return
+            val attemptKey = item.mediaId.ifBlank { videoUri.toString() }
+            if (!automaticSubtitleAttempts.add(attemptKey)) return
+
+            lifecycleScope.launch {
+                val subtitleUri = SubdlSubtitleDownloader.downloadEnglishSubtitle(
+                    context = this@PlayerActivity,
+                    videoUri = videoUri,
+                    displayName = item.mediaMetadata.title?.toString(),
+                ) ?: return@launch
+                val controller = snapshotFlow { mediaController }.filterNotNull().first()
+                if (controller.currentMediaItem?.localConfiguration?.uri == videoUri) {
+                    controller.addSubtitleTrack(subtitleUri)
+                }
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
