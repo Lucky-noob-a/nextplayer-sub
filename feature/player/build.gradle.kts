@@ -11,6 +11,7 @@ android {
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
+        buildConfigField("String", "SUBDL_API_KEY", "\"${providers.gradleProperty(\"SUBDL_API_KEY\").orElse(\"\").get()}\"")
         minSdk = libs.versions.android.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -21,6 +22,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         viewBinding = true
         compose = true
     }
