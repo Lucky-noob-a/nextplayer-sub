@@ -852,9 +852,13 @@ class PlayerService : MediaSessionService() {
 
                 val existingSubConfigurations = mediaItem.localConfiguration?.subtitleConfigurations ?: emptyList()
                 val subConfigurations = (localSubs + externalSubs).map { subtitleUri ->
+                    val subtitleName = getFilenameFromUri(subtitleUri).lowercase()
+                    val looksEnglish = listOf("english", ".en.", "_en.", "-en.", ".eng.", "_eng.", "-eng.")
+                        .any { marker -> subtitleName.contains(marker) }
                     uriToSubtitleConfiguration(
                         uri = subtitleUri,
                         subtitleEncoding = playerPreferences.subtitleTextEncoding,
+                        isSelected = looksEnglish,
                     )
                 }
 
